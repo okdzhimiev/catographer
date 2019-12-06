@@ -9,6 +9,7 @@ A web page that plays GPS logs recorded by some logger device:
 
 ## Screenshots
 ![screen1](screenshots/screen1.jpeg)
+![screen2](screenshots/screen2.gif)
 
 ## Software
 ### Requirements
