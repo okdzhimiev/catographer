@@ -5,7 +5,7 @@ A web page that plays GPS logs recorded by some logger device:
 * internet connection is required to pull js libs and map tiles
 
 ## Demo
-TBA
+[Demo](https://okdzhimiev.github.io/catographer/index.html?path=demo)
 
 ## Software
 ### Requirements
@@ -26,7 +26,7 @@ TBA
 
 
 ### Instructions for Node
-TBA
+-
 
 ### Details
 #### GPS log file example
