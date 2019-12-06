@@ -1,0 +1,487 @@
+<html>
+<head>
+
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.js"
+        integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
+        crossorigin="anonymous"></script>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" />
+
+    <style>
+        #map{
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top:  0px;
+            left: 0px;
+        }
+        #control_panel{
+            position:absolute;
+            top: 134px;
+            right: 12px;
+            z-index: 1000;
+        }
+        #nw_panel{
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            z-index: 1000;
+        }
+        #info_panel,
+        #time_panel,
+        #list_panel{
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 2px;
+            border: 1px solid rgba(100,100,100,0.7);
+            padding: 5px 10px;
+            color:white;
+            margin-bottom: 5px;
+        }
+
+        #list_panel{
+            display: inline-block;
+        }
+
+        #date_cell{
+            color: white;
+            font-size: 1.2em;
+        }
+
+        #dist_cell,
+        #time_cell{
+            color:white;
+            font-size: 1.2em;
+        }
+
+        #info_panel table td{
+            color: white;
+        }
+
+        .btn{
+            cursor:pointer;
+            background: white;
+            border-radius: 2px;
+            box-shadow: 0px 0px 0px 2px rgba(0,0,0,0.2);
+            position: relative;
+            top: 5px;
+            margin-bottom:7px;
+        }
+
+        .btn:hover{
+            background: rgba(250,250,250,1);
+        }
+
+        .material-icons.md-36{
+            font-size: 44px;
+            color: rgba(0,0,0,0.8);
+            /*color: DodgerBlue;*/
+        }
+
+        .hms{
+            font-size: 0.8em;
+            color: rgba(150,150,150,1);
+        }
+
+        .hms2{
+            color: rgba(180,180,180,1);
+        }
+
+    </style>
+</head>
+
+<body onload="init()">
+
+    <div id="map"></div>
+    <div id="control_panel">
+        <a href='log'>
+        <div class="btn">
+            <i class="material-icons md-36">get_app</i>
+        </div>
+        </a>
+        <div class="btn" onclick="log_play()">
+            <i id="log_play_ico" class="material-icons md-36">play_arrow</i>
+        </div>
+    </div>
+    <div id='nw_panel'>
+        <div id='time_panel' hidden>
+            <table>
+                <tr>
+                    <td id='date_cell'></td>
+                </tr>
+            </table>
+        </div>
+        <div>
+            <div id='info_panel' hidden>
+                <table>
+                    <tr>
+                        <td title="Walk time"><span class='hms2'>Time:</span></td>
+                        <td><div id='time_cell'></div></td>
+                    </tr>
+                    <tr>
+                        <td title="Walk distance"><span class='hms2'>Distance:</span></td>
+                        <td><div id='dist_cell'></div></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div id='list_panel' hidden>
+        </div>
+    </div>
+
+    <script>
+
+        /*
+         * Copyright (C) 2019 Oleg K Dzhimiev
+         * SPDX-License-Identifier: AGPL-3.0-or-later
+         */
+
+        const params = new URLSearchParams(document.location.search);
+        const logdir = params.get("path") || "logs";
+
+        let clrs = [
+            "Red",
+            "SpringGreen",
+            "DodgerBlue",
+            "Gold",
+            "Orange",
+            "Violet"
+        ];
+
+        let UCI = true;
+        let icon_cat_walking;
+        let icon_cat_sitting;
+
+        let map;
+        let map_centered = false;
+        let map_mark;
+
+        let tz = 0;
+
+        let log_layers = [];
+        let log_current = "";
+        let clr_current = "white";
+
+        let log_play_icon = document.getElementById("log_play_ico");
+
+        let log_stopped = true;
+        let log_paused = false;
+
+        // body.onload
+        function init(){
+            $("#info_panel").css({display:"inline-block"}).hide();
+            init_map();
+            init_log_list();
+
+            icon_cat_walking = L.icon({
+                iconUrl: 'cat_walking.gif',
+                iconSize: [150, 120],
+                iconAnchor: [75, 95],
+            });
+
+            icon_cat_sitting = L.icon({
+                iconUrl: 'cat_sitting.png',
+                iconSize: [150, 150],
+                iconAnchor: [90, 140],
+            });
+
+        }
+
+        // log play funcs
+        function init_log_list(){
+            let xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    let log_list = [];
+                    $(this.response).find("a").each((k,v)=>{
+                        if ($(v).attr("href")==$(v).html()){
+                            log_list.push($(v).html());
+                        }
+                    });
+                    log_list.forEach((a,i)=>{
+                        let list_item = $(`<div>${a}</div>`).css({
+                            color: clrs[i%clrs.length],
+                            cursor: "pointer"
+                        });
+                        $("#list_panel").append(list_item);
+                        list_item.click(function(){
+
+                            if (!log_stopped){
+                                map_clear_current_layer();
+                                log_play_stop(false);
+                            }
+
+                            $(this).parent().find("div").css({"font-weight":"normal","font-size":"1em"});
+                            $(this).css({"font-weight":"bold","font-size":"1.2em"});
+                            log_current = logdir+"/"+$(this).html();
+                            clr_current = $(this).css("color");
+                            log_play_icon.innerHTML = "play_arrow";
+                        });
+                    });
+                    $("#list_panel").find("div")[0].click();
+
+                }
+            };
+            xhttp.open("GET", logdir, true);
+            xhttp.send();
+        }
+
+        function log_play_start(){
+
+            map_clear_current_layer();
+            lrgr = {name: log_current, clr: clr_current, layer: L.layerGroup([])};
+            log_layers.push(lrgr);
+            lrgr.layer.addTo(map);
+
+            map_centered = false;
+            log_paused = false;
+            log_stopped = false;
+            log_play_icon.innerHTML = "pause";
+
+            if (map_mark!=undefined){
+                if (UCI) map_mark.setIcon(icon_cat_walking);
+            }
+
+            let xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    let recs = this.response.split(/\r\n/);
+                    process_recs(recs,lrgr.layer,lrgr.clr);
+                }
+            };
+            xhttp.open("GET", log_current, true);
+            xhttp.send();
+        }
+
+        function log_play(){
+            if (log_stopped){
+                log_play_start();
+            }else{
+                log_play_pause();
+            }
+        }
+
+        function log_play_pause(){
+            log_paused = !log_paused;
+            if (log_paused){
+                log_play_icon.innerHTML = "play_arrow";
+                if (UCI) map_mark.setIcon(icon_cat_sitting);
+            }else{
+                log_play_icon.innerHTML = "pause";
+                if (UCI) map_mark.setIcon(icon_cat_walking);
+            }
+        }
+
+        function log_play_stop(state=true){
+            log_stopped = true;
+            log_paused = false;
+            if (state){
+                log_play_icon.innerHTML = "replay";
+            }else{
+                log_play_icon.innerHTML = "play_arrow";
+            }
+            if (UCI) map_mark.setIcon(icon_cat_sitting);
+        }
+
+        async function log_play_state(){
+            if (log_stopped){
+                return false;
+            }
+            while(log_paused){
+                await sleep(100);
+            }
+            return true;
+        }
+
+        async function process_recs(recs,layer,color){
+            // first valid record found
+            let fvf = false;
+            let state = true;
+
+            let valid_recs = recs.filter((a)=>a.split(',')[2]==='A');
+            // now we want to fit in 30s or play with 100-ms-min interval
+            let sleep_ms = Math.min(parseInt(30000/valid_recs.length),100);
+
+            let total_distance = 0;
+            let total_time = 0;
+            let old_time = false;
+
+            for(let i=0;i<recs.length;i++){
+
+                state = await log_play_state();
+                if (!state) break;
+
+                let quick_check = recs[i].split(',');
+                if (quick_check[2]==='A'){
+                    fvf = true;
+                    let parsed = parse_nmea(recs[i]);
+                    let delta = place_mark(parsed.slice(0,2),layer,color);
+                    if (delta!==false){
+                        total_distance += delta;
+                    }
+
+                    if (old_time!=false){
+                        let dt = (parsed[2]-old_time)/1000;
+                        total_time += dt;
+                    }
+                    old_time = parsed[2];
+
+                    update_distance(total_distance);
+                    update_time(parsed[2],total_time);
+
+                }
+                if (fvf){
+                    await sleep(sleep_ms);
+                }
+            }
+            log_play_stop(state);
+        }
+
+        // map funcs
+        function init_map(){
+            let Esri_WorldImagery = L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                {
+                    maxZoom: 21,
+                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                }
+            );
+
+            let OSMTiles = L.tileLayer(
+                'http://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                {
+                    maxZoom: 21,
+                    attribution: 'Map data and images &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'
+                }
+            );
+
+            let baseMaps = {
+                "Esri world imagery": Esri_WorldImagery,
+                "Open Street Map": OSMTiles
+            };
+
+            map = L.map('map',{
+                layers: [Esri_WorldImagery],
+                zoomControl: false,
+            });
+
+            // better to go with a separate button
+            //map.on('load',playlog);
+            map.setView([48.8604698,2.3377287], 19);
+
+            new L.Control.Zoom({position: 'topright'}).addTo(map);
+            L.control.layers(baseMaps).addTo(map);
+        }
+
+        function map_clear_current_layer(){
+            let lrgr = log_layers.filter((lrgr)=>lrgr.name==log_current);
+            //remove all what found
+            lrgr.forEach((lyr)=>{
+                map.removeLayer(lyr.layer);
+            });
+            // update
+            log_layers = log_layers.filter((lrgr)=>lrgr.name!=log_current);
+
+            if (map_mark!==undefined){
+                map.removeLayer(map_mark);
+                //map_mark = undefined;
+            }
+        }
+
+        function place_mark(loc,layer,color){
+            if (!loc){
+                return false;
+            }
+            if (!map_centered){
+                map.panTo(loc);
+                if (UCI) {
+                    map_mark = L.marker(loc,{icon:icon_cat_walking}).addTo(map);
+                }else{
+                    map_mark = L.marker(loc).addTo(map);
+                }
+                map_centered = true;
+                return 0;
+            }else{
+                //draw a line here
+                let p0 = map_mark.getLatLng();
+                let p1 = new L.latLng(loc);
+                let pathLine = L.polyline([p0,p1],{color:color,weight:4}).addTo(layer);
+                map_mark.setLatLng(loc);
+                return p0.distanceTo(p1);
+            }
+        }
+
+        // ui funcs
+        function update_distance(d){
+            let dist = d.toFixed(0)+" <span class='hms'>m</span>";
+            $("#dist_cell").html(dist);
+            $("#info_panel").show();
+        }
+
+        function update_time(td,total){
+            // global
+            $("#time_panel").show();
+            let elem = document.getElementById("date_cell");
+            elem.innerHTML = td.toLocaleTimeString()+", "+td.toDateString();
+            // walk time
+            total = new Date(total * 1000).toISOString().substr(11, 8);
+            total = total.split(":");
+            total = total[0]+"<span class='hms'>h</span> "+
+                    total[1]+"<span class='hms'>m</span> "+
+                    total[2]+"<span class='hms'>s</span>";
+
+            $("#time_cell").html(total);
+            $("#info_panel").show();
+
+        }
+
+        // nmea funcs
+        function parse_nmea_coordinate(coord,dir){
+            let sign = 1;
+            let nums = 2;
+            if (dir=='S'||dir=='W'){
+                sign = -1;
+            }
+            if (dir=='W'||dir=='E'){
+                nums = 3;
+            }
+            return sign*(parseFloat(coord.slice(0,nums))+parseFloat(coord.slice(nums)/60));
+        }
+
+        function parse_nmea_time(str){
+            let hh = str.slice(0,2);
+            let mm = str.slice(2,4);
+            let ss = str.slice(4,6);
+            return [hh,mm,ss];
+        }
+
+        function parse_nmea_date(str){
+            let dd = str.slice(0,2);
+            let mm = str.slice(2,4);
+            let yy = "20"+str.slice(4,6);
+            return [yy,mm,dd];
+        }
+
+        function parse_nmea(str){
+            let pars = str.split(",");
+            // NmeA Sentence TYpe
+            let nasty = pars[0].slice(-3);
+            if (nasty=="RMC"){
+                let lat = parse_nmea_coordinate(pars[3],pars[4]);
+                let lng = parse_nmea_coordinate(pars[5],pars[6]);
+                let t = parse_nmea_time(pars[1]);
+                let d = parse_nmea_date(pars[9]);
+                let dt = new Date(d.join("-")+"T"+t.join(":")+"Z");
+                return [lat,lng,dt];
+            }
+            return false;
+        }
+        // util funcs
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+    </script>
+</body>
+</html>
