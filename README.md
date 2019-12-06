@@ -18,7 +18,7 @@ A web page that plays GPS logs recorded by some logger device:
 
 ### Instructions for Apache
 * clone the project
-* put log files into *logs/* directory (see log file format below)
+* put any log files into *logs/* directory (see log file format below). The directory is autoscanned on page load.
 * install Apache and link the project to its root:
 ```sh
 ~$ sudo apt install apache2
