@@ -138,7 +138,7 @@
          */
 
         const params = new URLSearchParams(document.location.search);
-        const logdir = params.get("path") || "logs";
+        let logdir = params.get("path") || "logs";
 
         let clrs = [
             "Red",
