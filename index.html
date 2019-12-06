@@ -193,6 +193,11 @@
             let xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function() {
                 if (this.readyState == 4 && this.status == 200) {
+
+                    if (logdir=="demo"){
+                        logdir = "logs";
+                    }
+
                     let log_list = [];
                     $(this.response).find("a").each((k,v)=>{
                         if ($(v).attr("href")==$(v).html()){
