@@ -199,10 +199,7 @@
                     }
 
                     let log_list = [];
-                    console.log("test:");
-                    console.log(this.response);
                     $(this.response).find("a").each((k,v)=>{
-                        console.log(v);
                         if ($(v).attr("href")==$(v).html()){
                             log_list.push($(v).html());
                         }
