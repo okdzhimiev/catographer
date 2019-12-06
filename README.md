@@ -16,7 +16,7 @@ A web page that plays GPS logs recorded by some logger device:
 * **for hosting:** webserver installed, e.g. Apache or Node
 * **for viewing:** more or less up-to-date browser
 
-### Instructions for Apache
+### Instructions for Apache (under Ubuntu Linux distro)
 * clone the project
 * put any log files into *logs/* directory (see log file format below). The directory is autoscanned on page load.
 * install Apache and link the project to its root:
