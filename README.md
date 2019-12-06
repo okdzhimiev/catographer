@@ -28,10 +28,6 @@ A web page that plays GPS logs recorded by some logger device:
 
 `http://<host-ip-or-hostname>/somename`
 
-
-### Instructions for Node
--
-
 ### Details
 #### GPS log file example
 ```sh
@@ -72,7 +68,7 @@ No ads.
   * disconnectable battery
   * GPS TX to ESP GPIO
   * ESP Deep Sleep enabling
-* The GPS Logger came out light but a bit too bulky. Went ahead with testing anyways - the **target** didn't lose it.
+* The GPS Logger came out light but a bit too bulky. Went ahead with testing anyways - the **asset** didn't lose it.
 * Power saving - deep sleep for ESP, while GPS is always on - 3 hours of work with a ~30s interval between the records.
 
 **Room for improvement:**
