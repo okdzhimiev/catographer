@@ -7,6 +7,9 @@ A web page that plays GPS logs recorded by some logger device:
 ## Demo
 [Demo](https://okdzhimiev.github.io/catographer/index.html?path=demo)
 
+## Screenshots
+![screen1](screenshots/screen1.jpeg)
+
 ## Software
 ### Requirements
 * **for hosting:** webserver installed, e.g. Apache or Node
