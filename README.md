@@ -47,13 +47,10 @@ Notes:
 * only RMC sentences are used, others (like GGA) are ignored - better to filter those out
 
 ## Hardware: GPS Logger
-Any COTS or DIY device that is:
-* not too heavy
-* not too bulky
-* with internal storage and ability to write data from GPS receiver to a plain text file
+Any COTS or DIY device of a decent weight/size with internal storage available.
 
 ### COTS
-No ads.
+-
 
 ### DIY
 **BOM:**
